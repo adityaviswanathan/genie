@@ -33,17 +33,21 @@
                #:username "cautiontestusernamecaution"
                #:password "cautiontestpasswordcaution"
                #:exposeport 5432))
-  (db-exec cxn dropdb (database-name db1))
-  (db-exec cxn dropuser (database-username db1))
-  (define new-cxn (db-exec cxn createdb db1))
-  ;; Do some tests
-  (define found-cols
-    (query-rows new-cxn
-      (string-append "select column_name from "
-                     "information_schema.columns "
-                     "where table_name = '"
-                     (table-name (list-ref (database-tables db1) 0))
-                     "'")))
+  (db-orc cxn dropdb (database-name db1))
+  (db-orc cxn dropuser (database-username db1))
+  (define new-cxn (db-orc cxn createdb db1))
+  ;; Test database orchestrator API.
+  ;; Get tables (and composite columns) matching those added via API.
+  (define found-tbls
+    (build-list
+      (length (database-tables db1))
+      (lambda (i)
+        (query-rows new-cxn
+          (string-append "select column_name from "
+                         "information_schema.columns "
+                         "where table_name = '"
+                         (table-name (list-ref (database-tables db1) i))
+                         "'")))))
   ;; Wrapper representation to mimic DB query result format.
   (define (expected->vectorize tbl)
     (map vector (map column-name (table-columns tbl))))
@@ -54,9 +58,14 @@
         (lambda (expected-col found-col)
           (check-equal? (vector-ref expected-col 0) (vector-ref found-col 0)))
         (expected->vectorize expected-tbl) found-tbl))
-    (database-tables db1) (list found-cols))
+    (database-tables db1) found-tbls)
+  ;; Test database insert API.
+  (define test-row
+    ;; TODO(aditya): Raw PSQL types should be casted correctly.
+    (list "1" "'hello'" "TRUE"))
+  (db-insert new-cxn addrow "tbl1" test-row)
   (disconnect new-cxn)
   ;; Delete test resources: database and database user.
-  (db-exec cxn dropdb (database-name db1))
-  (db-exec cxn dropuser (database-username db1))
+  (db-orc cxn dropdb (database-name db1))
+  (db-orc cxn dropuser (database-username db1))
   (disconnect cxn))

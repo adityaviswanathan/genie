@@ -3,12 +3,6 @@
 (require rackunit)
 (require "../defs/database.rkt")
 
-(define (typestring type)
-  (case 
-    [('int) "INTEGER"]
-    [('string) "TEXT"]
-    [('bool) "BOOL"]))
-
 (test-case
   "Database proto test"
   (define col1
