@@ -62,8 +62,28 @@
   ;; Test database insert API.
   (define test-row
     ;; TODO(aditya): Raw PSQL types should be casted correctly.
-    (list "1" "'hello'" "TRUE"))
+    (list 1 "hello" #t))
   (db-insert new-cxn addrow "tbl1" test-row)
+  ;; TODO(aditya): Define filters (and query) payload and late-bind when
+  ;; executing query.
+  (check-equal? (db-query new-cxn (list "col1") "tbl1" (list (list "col1" 1)))
+                (list (vector 1)))
+  (check-equal? (db-query new-cxn (list "col1") "tbl1" (list (list "col2" "hello")))
+                (list (vector 1)))
+  (check-equal? (db-query new-cxn (list "col1") "tbl1" (list (list "col3" #t)))
+                (list (vector 1)))
+  (check-equal? (db-query new-cxn (list "col2") "tbl1" (list (list "col1" 1)))
+                (list (vector "hello")))
+  (check-equal? (db-query new-cxn (list "col2") "tbl1" (list (list "col2" "hello")))
+                (list (vector "hello")))
+  (check-equal? (db-query new-cxn (list "col2") "tbl1" (list (list "col3" #t)))
+                (list (vector "hello")))
+  (check-equal? (db-query new-cxn (list "col3") "tbl1" (list (list "col1" 1)))
+                (list (vector #t)))
+  (check-equal? (db-query new-cxn (list "col3") "tbl1" (list (list "col2" "hello")))
+                (list (vector #t)))
+  (check-equal? (db-query new-cxn (list "col3") "tbl1" (list (list "col3" #t)))
+                (list (vector #t)))
   (disconnect new-cxn)
   ;; Delete test resources: database and database user.
   (db-orc cxn dropdb (database-name db1))

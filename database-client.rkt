@@ -88,10 +88,31 @@
     [(db-orc cxn dropuser dbuser)
      (query-exec cxn (format "drop user if exists ~a" dbuser))]))
 
-;; TODO(aditya): Expose "SELECT $COL FROM $TABLE", etc getter queries.
-;; (define-syntax db-query
-  ;; (syntax-rules ()
-  ;;   []))
+(define (proj->queryfrag proj)
+  (string-append* (cdr (append* (map
+    (lambda (col) (list ", " col)) proj)))))
+
+;; TODO(aditya): Fix car/cdr by wrapping query in object.
+(define (filterindexes->queryfrag filters)
+  (string-append* (cdr (append*
+    (map (lambda (col) (list " " col))
+      (for/list ([i (in-range (length filters))])
+                (string-append (car (list-ref filters i)) 
+                               " = $"
+                               (number->string (+ i 1)))))))))
+
+(define (query->rows cxn proj source filters)
+  (define sql-query
+    (format "select ~a from ~a where ~a"
+            (proj->queryfrag proj)
+            source
+            (filterindexes->queryfrag filters)))
+  (apply query-rows (append (list cxn sql-query) (map car (map cdr filters)))))
+
+(define-syntax db-query
+  (syntax-rules ()
+    [(db-query cxn proj source filters)
+     (query->rows cxn proj source filters)]))
 
 ;; Generates SQL frag for the value list of @tbl.
 ;; row: Row for which SQL frag of column instance will be generated.
@@ -100,18 +121,23 @@
   (string-append* (cdr (append* (map
     (lambda (col) (list ", " col)) row)))))
 
-(define (insertdb tablename row cxn)
-  (write (format "Running PSQL query: insert into ~a values (~a)"
-                 tablename
-                 (values->queryfrag row)))
-  (query-exec cxn (format "insert into ~a values (~a)"
-                           tablename
-                           (values->queryfrag row))))
+(define (colindexes->queryfrag row)
+  (string-append* (cdr (append*
+    (map (lambda (col) (list ", " col))
+      (for/list ([i (in-range (length row))])
+                (string-append "$"
+                               (number->string (+ i 1)))))))))
 
-;; TODO(aditya): Expose "INSERT INTO $TABLE VALUES ( ...", etc setter queries.
+(define (insertdb tablename row cxn)
+  (define sql-stmt
+    (format "insert into ~a values (~a)"
+            tablename
+            (colindexes->queryfrag row)))
+  (apply query-exec (append (list cxn sql-stmt) row)))
+
 (define-syntax db-insert
   (syntax-rules (addrow)
     [(db-insert cxn addrow tablename row)
      (insertdb tablename row cxn)]))
 
-(provide pgdb-cxn db-orc db-insert)
+(provide pgdb-cxn db-orc db-insert db-query)
