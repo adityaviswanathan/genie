@@ -37,5 +37,5 @@
   (check-eq? (column-name (caddr (table-columns tbl1))) "col3")
   (check-eq? (column-name (caddr (table-columns tbl1))) "col3")
   (check-eq?
-    (column:datatype->integer (column-datatype (car (table-columns tbl1))))
-    (column:datatype->integer 'int)))
+    (datatype:e->integer (column-datatype (car (table-columns tbl1))))
+    (datatype:e->integer 'int)))

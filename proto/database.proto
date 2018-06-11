@@ -32,6 +32,15 @@ message Query {
   repeated QueryFilter filters = 3;
 }
 
+// Describes artifacts required of a database column entry.
+message Entry {
+  optional Column column = 1;
+  optional int64 intvalue = 2;
+  optional float floatvalue = 3;
+  optional string stringvalue = 4;
+  optional bool boolvalue = 5;
+}
+
 // Describes artifacts required of a database column.
 message Column {
   optional int64 id = 1; // TODO(aditya): Do we need this?

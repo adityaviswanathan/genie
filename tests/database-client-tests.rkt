@@ -8,7 +8,7 @@
 (require (prefix-in proto- "../defs/database.rkt"))
 
 (test-case
-  "Create db test"
+  "Create/insert/query db test"
   (define cxn
     (pgdb-cxn config/database config/username config/password))
   ;; Setup test db
@@ -121,7 +121,7 @@
     (proto-query* #:projections (list proj3)
                   #:sources (list src)
                   #:filters (list fltr3)))
-  ;; Verify test queries.
+  ;; Verify test queries via query API.
   (check-equal? (db-query new-cxn q1) (list (vector 1)))
   (check-equal? (db-query new-cxn q2) (list (vector 1)))
   (check-equal? (db-query new-cxn q3) (list (vector 1)))
