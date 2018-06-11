@@ -1,22 +1,51 @@
 syntax = "proto2";
 
-message Column {
-  optional int64 id = 1; // TODO(aditya): Do we need this?
-  optional string name = 2;
-  enum Datatype {
+message Datatype {
+  enum E {
     INT = 0;
     FLOAT = 1;
     STRING = 2;
     BOOL = 3;
   }
-  optional Datatype datatype = 3;
 }
 
+message QueryProjection {
+  optional string column = 1;
+}
+
+message QuerySource {
+  optional string table = 1;
+}
+
+message QueryFilter {
+  optional string column = 1;
+  optional Datatype.E datatype = 2;
+  optional int64 intvalue = 3;
+  optional float floatvalue = 4;
+  optional string stringvalue = 5;
+  optional bool boolvalue = 6;
+}
+
+message Query {
+  repeated QueryProjection projections = 1;
+  repeated QuerySource sources = 2;
+  repeated QueryFilter filters = 3;
+}
+
+// Describes artifacts required of a database column.
+message Column {
+  optional int64 id = 1; // TODO(aditya): Do we need this?
+  optional string name = 2;
+  optional Datatype.E datatype = 3;
+}
+
+// Describes artifacts required of a database table.
 message Table {
   optional string name = 1;
   repeated Column columns = 2;
 }
 
+// Describes artifacts required of a database.
 message Database {
   repeated Table tables = 1;
   optional string name = 2;
