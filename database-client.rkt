@@ -95,32 +95,63 @@
   (define (projections->queryfrag projs)
     (string-append* (cdr (append* (map
       (lambda (i) (list ", " i)) (map proto-query-projection-column projs))))))
-  
   (define (sources->queryfrag sources)
     (string-append* (cdr (append* (map
       (lambda (i) (list ", " i)) (map proto-query-source-table sources))))))
-  
-  (define (filterindexes->queryfrag filters)
-    (string-append* (cdr (append*
-      (map (lambda (col) (list " " col))
-        (for/list ([i (in-range (length filters))])
-                  (string-append (proto-query-filter-column (list-ref filters i))
-                                 " = $"
-                                 (number->string (+ i 1)))))))))
-  (define (filtervalue->queryfrag fltr)
-    (case (proto-datatype:e->integer (proto-query-filter-datatype fltr))
-      [(0) (proto-query-filter-intvalue fltr)]
-      [(1) (proto-query-filter-floatvalue fltr)]
-      [(2) (proto-query-filter-stringvalue fltr)]
-      [(3) (proto-query-filter-boolvalue fltr)]))
+  (define (list->prefix lst end)
+    (append
+      (for/list ([i (in-range end)])
+                (list-ref lst i))))
+  (define (filterlist->length fltrlist idx)
+    (define prefix (list->prefix (proto-query-filter-list-lists fltrlist) idx))
+    (define childlengths
+      (for/list ([i (in-range (length prefix))])
+                (filterlist->length (list-ref prefix i) (length (proto-query-filter-list-lists (list-ref prefix i))))))
+    (apply +
+      (append (map length (map proto-query-filter-list-filters prefix))
+              childlengths)))
+  (define (filterlist-contents->queryfrag fltrlist curridx)
+    (append
+      (for/list ([i (in-range (length (proto-query-filter-list-filters fltrlist)))])
+                (string-append (proto-query-filter-column (list-ref (proto-query-filter-list-filters fltrlist) i))
+                                " = $" ;; TODO(aditya): Generalize filter operator support.
+                                (number->string (+ curridx (+ i 1)))))
+      (for/list ([i (in-range (length (proto-query-filter-list-lists fltrlist)))])
+                (string-append "("
+                               (filterlist->queryfrag
+                                 (list-ref (proto-query-filter-list-lists fltrlist) i)
+                                 (+ curridx (+ (filterlist->length fltrlist i)
+                                               (length (proto-query-filter-list-filters fltrlist)))))
+                               ")"))))
+  (define (filterlist->queryfrag fltrlist curridx)
+    (string-append*
+      (cdr (append*
+        (map (lambda (connective col) (list connective col))
+          (for/list ([i (in-range (+ (length (proto-query-filter-list-filters fltrlist))
+                                     (length (proto-query-filter-list-lists fltrlist))))])
+            (case (proto-query-filter-list:e->integer (proto-query-filter-list-connective fltrlist))
+              [(0) " and "]
+              [(1) " or "]))
+          (filterlist-contents->queryfrag fltrlist curridx))))))
   (define sql-query
     (format "select ~a from ~a where ~a"
             (projections->queryfrag (proto-query-projections query))
             (sources->queryfrag (proto-query-sources query))
-            (filterindexes->queryfrag (proto-query-filters query))))
+            (filterlist->queryfrag (proto-query-filterlist query) 0)))
+  (define (filterlist->filters fltrlist)
+    (define basefilters
+      (for/list ([i (in-range (length (proto-query-filter-list-filters fltrlist)))])
+        (list (case (proto-datatype:e->integer (proto-query-filter-datatype (list-ref (proto-query-filter-list-filters fltrlist) i)))
+                [(0) (proto-query-filter-intvalue (list-ref (proto-query-filter-list-filters fltrlist) i))]
+                [(1) (proto-query-filter-floatvalue (list-ref (proto-query-filter-list-filters fltrlist) i))]
+                [(2) (proto-query-filter-stringvalue (list-ref (proto-query-filter-list-filters fltrlist) i))]
+                [(3) (proto-query-filter-boolvalue (list-ref (proto-query-filter-list-filters fltrlist) i))]))))
+    (define deepfilters
+      (map filterlist->filters (proto-query-filter-list-lists fltrlist)))
+    (flatten (append basefilters deepfilters)))
   (apply query-rows
     (append (list cxn sql-query)
-            (map filtervalue->queryfrag (proto-query-filters query)))))
+            (filterlist->filters (proto-query-filterlist query)))))
 
 ;; Query API to Database. Using this syntax, we can query the database using a
 ;; Query proto and conntection e.g. "(db-query cxn query)".

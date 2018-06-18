@@ -9,14 +9,22 @@ message Datatype {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//                               QUERY INTERFACE                              //
+////////////////////////////////////////////////////////////////////////////////
+
+// Projection of a Query. Corresponds to stub "SELECT <COLUMN>+ ..." in a query.
 message QueryProjection {
   optional string column = 1;
 }
 
+// Source of a Query. Corresponds to stub "... FROM <TABLE>+ ..." in a query.
 message QuerySource {
   optional string table = 1;
 }
 
+// Filter of a Query. Corresponds to stub "... WHERE <COLUMN> = <VALUE> ..." in
+// a query.
 message QueryFilter {
   optional string column = 1;
   optional Datatype.E datatype = 2;
@@ -26,10 +34,21 @@ message QueryFilter {
   optional bool boolvalue = 6;
 }
 
+message QueryFilterList {
+  enum E {
+    AND = 0;
+    OR = 1;
+  }
+  optional E connective = 1;
+  repeated QueryFilter filters = 2;
+  repeated QueryFilterList lists = 3;
+}
+
 message Query {
   repeated QueryProjection projections = 1;
   repeated QuerySource sources = 2;
   repeated QueryFilter filters = 3;
+  optional QueryFilterList filterlist = 4;
 }
 
 // Describes artifacts required of a database column entry.

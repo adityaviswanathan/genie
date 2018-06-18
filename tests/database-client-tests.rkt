@@ -85,52 +85,91 @@
     (proto-query-filter* #:column "col3"
                          #:boolvalue #t
                          #:datatype 'bool))
+  (define fltrlist-innest
+    (proto-query-filter-list* #:connective 'or
+                              #:filters (list fltr1 fltr2)))
+  (define fltrlist1
+    (proto-query-filter-list* #:connective 'and
+                              #:filters (list fltr1 fltr2 fltr3)
+                              #:lists (list fltrlist-innest)))
+  (define fltrlist2
+    (proto-query-filter-list* #:connective 'and
+                              #:filters (list fltr1 fltr3)))
+  (define fltrlist3
+    (proto-query-filter-list* #:connective 'or
+                              #:filters (list fltr2 fltr3)))
+  ;; Corresponds to singleton, non-connective filter on value 1.
+  (define fltrlist-singleton
+    (proto-query-filter-list* #:connective 'or
+                              #:filters (list fltr1)))
+  ;; Corresponds to filter:
+  ;;       OR
+  ;;       |
+  ;; ---------------
+  ;; |     |       |
+  ;; 1  "hello"  TRUE
+  (define fltrlist-simple-or
+    (proto-query-filter-list* #:connective 'or
+                              #:filters (list fltr1 fltr2 fltr3)))
+  ;; Corresponds to filter:
+  ;;      AND
+  ;;       |
+  ;; ---------------
+  ;; |     |       |
+  ;; 1  "hello"  TRUE
+  (define fltrlist-simple-and
+    (proto-query-filter-list* #:connective 'and
+                              #:filters (list fltr1 fltr2 fltr3)))
+  ;; Corresponds to filter:
+  ;;                           OR
+  ;;                           |
+  ;;  ---------------------------------------------------
+  ;;  |     |      |      |               |             |
+  ;;  1  "hello"  TRUE   AND             AND            OR
+  ;;                      |               |             |
+  ;;             -------------------    -----        --------
+  ;;             |     |      |    |    |   |        |      |
+  ;;             1  "hello"  TRUE  OR   1  TRUE   "hello"  TRUE
+  ;;                               |
+  ;;                            -------
+  ;;                            |     |
+  ;;                            1  "hello"
+  (define fltrlist-deepnested
+    (proto-query-filter-list* #:connective 'or
+                              #:filters (list fltr1 fltr2 fltr3)
+                              #:lists (list fltrlist1 fltrlist2 fltrlist3)))
+  ;; Query projecting one column via a single filter.
   (define q1
     (proto-query* #:projections (list proj1)
                   #:sources (list src)
-                  #:filters (list fltr1)))
+                  #:filterlist fltrlist-singleton))
+  ;; Query projecting one column via an OR filterlist over three filters.
   (define q2
     (proto-query* #:projections (list proj1)
                   #:sources (list src)
-                  #:filters (list fltr2)))
+                  #:filterlist fltrlist-simple-or))
+  ;; Query projecting one column via an AND filterlist over three filters.
   (define q3
     (proto-query* #:projections (list proj1)
                   #:sources (list src)
-                  #:filters (list fltr3)))
+                  #:filterlist fltrlist-simple-and))
+  ;; Query projecting three columns via an AND filterlist over three filters.
   (define q4
-    (proto-query* #:projections (list proj2)
+    (proto-query* #:projections (list proj1 proj2 proj3)
                   #:sources (list src)
-                  #:filters (list fltr1)))
+                  #:filterlist fltrlist-simple-and))
+  ;; Query projecting three columns via an deeply nested filterlist.
   (define q5
-    (proto-query* #:projections (list proj2)
+    (proto-query* #:projections (list proj1 proj2 proj3)
                   #:sources (list src)
-                  #:filters (list fltr2)))
-  (define q6
-    (proto-query* #:projections (list proj2)
-                  #:sources (list src)
-                  #:filters (list fltr3)))
-  (define q7
-    (proto-query* #:projections (list proj3)
-                  #:sources (list src)
-                  #:filters (list fltr1)))
-  (define q8
-    (proto-query* #:projections (list proj3)
-                  #:sources (list src)
-                  #:filters (list fltr2)))
-  (define q9
-    (proto-query* #:projections (list proj3)
-                  #:sources (list src)
-                  #:filters (list fltr3)))
+                  #:filterlist fltrlist-deepnested))
   ;; Verify test queries via query API.
+  ;; TODO(aditya): Test queries across various sources.
   (check-equal? (db-query new-cxn q1) (list (vector 1)))
   (check-equal? (db-query new-cxn q2) (list (vector 1)))
   (check-equal? (db-query new-cxn q3) (list (vector 1)))
-  (check-equal? (db-query new-cxn q4) (list (vector "hello")))
-  (check-equal? (db-query new-cxn q5) (list (vector "hello")))
-  (check-equal? (db-query new-cxn q6) (list (vector "hello")))
-  (check-equal? (db-query new-cxn q7) (list (vector #t)))
-  (check-equal? (db-query new-cxn q8) (list (vector #t)))
-  (check-equal? (db-query new-cxn q9) (list (vector #t)))
+  (check-equal? (db-query new-cxn q4) (list (vector 1 "hello" #t)))
+  (check-equal? (db-query new-cxn q5) (list (vector 1 "hello" #t)))
   (disconnect new-cxn)
   ;; Delete test resources: database and database user.
   (db-admin dropdb cxn (proto-database-name db1))
