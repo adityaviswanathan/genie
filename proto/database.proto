@@ -44,11 +44,13 @@ message QueryFilterList {
   repeated QueryFilterList lists = 3;
 }
 
+// TODO(aditya): Workflow for mutating (insert/delete) from DB.
+// OR, we prevent clients from directly mutating DBs; instead they pass
+// messages that the server will internally decode and insert to DB.
 message Query {
   repeated QueryProjection projections = 1;
   repeated QuerySource sources = 2;
-  repeated QueryFilter filters = 3;
-  optional QueryFilterList filterlist = 4;
+  optional QueryFilterList filterlist = 3;
 }
 
 // Describes artifacts required of a database column entry.

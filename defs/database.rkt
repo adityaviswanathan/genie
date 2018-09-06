@@ -24,8 +24,7 @@
  query
  ((repeated struct:query-projection projections 1)
   (repeated struct:query-source sources 2)
-  (repeated struct:query-filter filters 3)
-  (optional struct:query-filter-list filterlist 4)))
+  (optional struct:query-filter-list filterlist 3)))
 (define-message-type
  entry
  ((optional struct:column column 1)
