@@ -29,9 +29,9 @@
                   #:columns (list col1 col2 col3)))
   (define db1
     (proto-database* #:tables (list tbl1)
-                     #:name "cautiontestdbcaution"
-                     #:username "cautiontestusernamecaution"
-                     #:password "cautiontestpasswordcaution"
+                     #:name config/gen-database
+                     #:username config/gen-username
+                     #:password config/gen-password
                      #:exposeport 5432))
   (db-admin dropdb cxn (proto-database-name db1))
   (db-admin dropuser cxn (proto-database-username db1))

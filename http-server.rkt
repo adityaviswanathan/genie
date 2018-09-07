@@ -73,11 +73,8 @@
       (define serialized-payload-in (open-input-bytes (readme in numbytes (get-output-bytes empty-bytes))))
       (define deserialized-payload (deserialize (proto-query*) serialized-payload-in))
       ;; Connect to db using config and run query.
-      ;; HACK: hardcoding db info for connection here. Need to decide on a
-      ;; pattern for clients to specify underlying DB to query and then create
-      ;; a connection server-side.
       (define db-cxn
-        (pgdb-cxn "cautiontestdbcaution" "cautiontestusernamecaution" "cautiontestpasswordcaution"))
+        (pgdb-cxn config/gen-database config/gen-username config/gen-password))
       (define res (db-query db-cxn deserialized-payload))
       (printf "[--------- Query result: ~s ---------]\n" res)
       ;; TODO(aditya): Figure out correct way to send response to client.

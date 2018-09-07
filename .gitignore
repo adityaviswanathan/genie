@@ -1,3 +1,10 @@
+# The config.rkt file must provide the following values:
+# config/username - The username to use when first logging into PSQL
+# config/database - The DB (name) to use when first logging into PSQL, never queried
+# config/password - The password to use for the initial login to PSQL
+# config/gen-username - The username for the generated PSQL DB
+# config/gen-database - The DB (name) for the generated PSQL DB
+# config/gen-password - The password for the generated PSQL DB
 config.rkt
 compiled/*
 defs/*
