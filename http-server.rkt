@@ -4,6 +4,7 @@
 (require "config.rkt")
 (require "database-client.rkt")
 (require (planet murphy/protobuf))
+(require (prefix-in lib- racket/serialize))
 (require (prefix-in proto- "defs/database.rkt"))
 (require xml net/url)
 
@@ -54,10 +55,10 @@
     (regexp-match #rx"Content-Length: ([0-9]+)"
                   in))
   (when (and route datasz)
-    (printf "[--------- Received query at url: ~s ---------]\n" (list-ref route 1))
+    ;; (printf "[--------- Received query at url: ~s ---------]\n" (list-ref route 1))
     (define numbytes
       (string->number (bytes->string/utf-8 (list-ref datasz 1))))
-    (printf "[--------- Query payload size ~s ---------]\n" numbytes)
+    ;; (printf "[--------- Query payload size ~s ---------]\n" numbytes)
     ;; Discard the rest of the header (up to and including blank line), yielding only data:
     (define header (regexp-match #rx"[^\r\n]\r\n\r\n" in))
     (when header
@@ -76,9 +77,10 @@
       (define db-cxn
         (pgdb-cxn config/gen-database config/gen-username config/gen-password))
       (define res (db-query db-cxn deserialized-payload))
-      (printf "[--------- Query result: ~s ---------]\n" res)
-      ;; TODO(aditya): Figure out correct way to send response to client.
-      (display res out))))
+      ;; (printf "[--------- Query result: ~s ---------]\n" res)
+      (display "HTTP/1.0 200 Okay\r\n" out)
+      (display "Server: k\r\nContent-Type: application/octet-stream\r\n\r\n" out)
+      (write (lib-serialize res) out))))
     
 ;; Top-level handler for dispatching based on request @in. Response is written
 ;; to @out.

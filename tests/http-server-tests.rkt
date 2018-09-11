@@ -7,6 +7,7 @@
 (require "../database-client.rkt")
 (require "../http-server.rkt")
 (require (planet murphy/protobuf))
+(require (prefix-in lib- racket/serialize))
 (require (prefix-in proto- "../defs/database.rkt"))
 (require net/http-client)
 
@@ -50,6 +51,8 @@
     (proto-query-source* #:table "tbl1"))
   (define proj1
     (proto-query-projection* #:column "col1"))
+  (define proj2
+    (proto-query-projection* #:column "col2"))
   (define fltr1
     (proto-query-filter* #:column "col1"
                          #:intvalue 1
@@ -58,7 +61,7 @@
     (proto-query-filter-list* #:connective 'or
                               #:filters (list fltr1)))
   (define query
-    (proto-query* #:projections (list proj1)
+    (proto-query* #:projections (list proj1 proj2)
                   #:sources (list src)
                   #:filterlist fltrlist-singleton))
   (define http-cxn
@@ -67,14 +70,17 @@
                     #:ssl? #f))
   (define serialized-payload (open-output-bytes))
   (serialize query serialized-payload)
+  ;; TODO(aditya): Url semantics (e.g. "/yoyo") should be well-defined.
+  ;; Currently, server assumes every inbound POST request contains a Query proto
+  ;; object for which a response (list of vector rows) is needed.
   (define-values (status headers http-res-port)
     (http-conn-sendrecv!
       http-cxn "/yoyo"
       #:method "POST"
       #:data (get-output-bytes serialized-payload)
       #:headers (list "Content-Type: application/octet-stream")))
-  (printf "STATUS ~s\n" (deserialize (port->string status)))
-  (printf "GOT ~s\n" (deserialize (port->bytes http-res-port)))
+  (check-equal? (bytes->string/utf-8 status) "HTTP/1.0 200 Okay")
+  (check-equal? (lib-deserialize (read http-res-port)) (list (vector 1 "hello")))
   (stop-server)
   (disconnect new-cxn)
   (disconnect cxn))
